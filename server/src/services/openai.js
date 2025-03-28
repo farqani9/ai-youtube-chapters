@@ -20,41 +20,65 @@ export async function generateChapters(videoData) {
   try {
     const { transcript, title, description, duration } = videoData;
 
-    const systemPrompt = `You are an expert YouTube content analyzer specializing in creating accurate, meaningful chapter timestamps. Your task is to:
-1. Analyze video content and identify distinct topic transitions
-2. Create clear, descriptive chapter titles that reflect the content
-3. Ensure timestamps are precise and chronological
-4. Maintain consistent chapter length distribution
-5. Use professional, clear language for titles
-6. Focus on key content transitions and main topics
-7. Ensure chapters cover the entire video content without gaps`;
+    const systemPrompt = `You are an expert YouTube content analyzer and chapter generator. Your primary goal is to create highly accurate, contextually relevant chapters that precisely reflect the video's content structure.
+
+KEY RESPONSIBILITIES:
+1. Carefully analyze the content to identify genuine topic changes and key moments
+2. Create chapters only at clear content transitions or significant topic changes
+3. Ensure chapter titles directly reflect the actual content being discussed
+4. Maintain natural pacing - chapters should follow the video's logical structure
+
+CONTENT ANALYSIS GUIDELINES:
+- For transcripts: Focus on speaker topic changes, new concept introductions, and clear transition phrases
+- For descriptions: Identify main topics, listed sections, and content structure markers
+- Look for transitional phrases like "moving on to", "next, let's discuss", "now we'll cover"
+- Pay attention to numerical markers, section numbers, or clear topic shifts
+- Identify tutorial steps, distinct examples, or demonstration segments
+
+CHAPTER CREATION RULES:
+1. Every chapter must correspond to actual content transitions
+2. Avoid arbitrary time-based splits - only create chapters at genuine topic changes
+3. Chapter titles must use words/phrases from the actual content
+4. Ensure chronological flow matches the content progression
+5. No placeholder or generic titles - be specific to the content`;
 
     // Construct the user prompt
-    const userPrompt = `Generate chapters for this YouTube video:
+    const userPrompt = `ANALYZE AND GENERATE CHAPTERS FOR:
 
 METADATA:
 Title: ${title}
 Duration: ${Math.floor(duration / 60)} minutes and ${duration % 60} seconds
-Content: ${transcript ? "Video has transcript" : "Using video description"}
+Content Source: ${transcript ? "Full Video Transcript" : "Video Description"}
 
 ${transcript ? "TRANSCRIPT:\n" + transcript : "DESCRIPTION:\n" + description}
 
-REQUIREMENTS:
-1. Format: "MM:SS - Chapter Title"
-2. Start with "00:00 - Introduction" or similar opening chapter
-3. Last timestamp must be before ${Math.floor(duration / 60)}:${String(
+CHAPTER GENERATION REQUIREMENTS:
+1. Format: Strictly use "MM:SS - Chapter Title"
+2. First Chapter: Must be "00:00 - [Relevant Introduction Title]"
+3. Duration Limit: Final timestamp before ${Math.floor(duration / 60)}:${String(
       duration % 60
     ).padStart(2, "0")}
-4. Generate ${duration > 1200 ? "6-8" : "3-5"} chapters (based on video length)
-5. Keep titles concise (2-6 words) but descriptive
-6. Ensure even distribution of chapters across the video duration
-7. Use professional, objective language
-8. Focus on major topic transitions
+4. Chapter Count: ${
+      duration > 1200 ? "6-8" : "3-5"
+    } chapters (based on ${Math.floor(duration / 60)} minute duration)
+5. Title Style: 
+   - Use 2-6 words
+   - Include specific terms from content
+   - Be descriptive and meaningful
+   - Avoid generic words like "Part 1", "Section", etc.
+6. Distribution:
+   - Space chapters based on actual content transitions
+   - Minimum 60 seconds between chapters
+   - Ensure logical progression
+7. Language:
+   - Use professional, clear terminology
+   - Match the content's technical level
+   - Be consistent with video's style
 
-Example output format:
-00:00 - Introduction
-02:30 - Key Concept Overview
-05:45 - Practical Implementation
+EXAMPLE OUTPUT (DO NOT USE THESE TITLES, GENERATE BASED ON ACTUAL CONTENT):
+00:00 - Project Setup and Requirements
+02:30 - Database Schema Design
+05:45 - API Implementation Steps
 ...`;
 
     const completion = await openai.chat.completions.create({
@@ -69,18 +93,20 @@ Example output format:
           content: userPrompt,
         },
       ],
-      temperature: 0.5, // Reduced for more consistent output
+      temperature: 0.3, // Reduced further for more deterministic output
       max_tokens: 500,
-      presence_penalty: 0.3, // Encourage some content variation
-      frequency_penalty: 0.3, // Discourage repetitive language
+      presence_penalty: 0.2, // Adjusted for better context adherence
+      frequency_penalty: 0.4, // Increased to reduce repetitive language
+      top_p: 0.9, // Added to focus on more probable completions
     });
 
     // Parse the response into structured chapter data
     const chaptersText = completion.choices[0].message.content;
     const chapters = parseChapters(chaptersText, duration);
 
-    // Validate chapter distribution
+    // Enhanced validation
     validateChapterDistribution(chapters, duration);
+    validateChapterTitles(chapters);
 
     return chapters;
   } catch (error) {
@@ -140,4 +166,46 @@ function validateChapterDistribution(chapters, totalDuration) {
       );
     }
   }
+}
+
+function validateChapterTitles(chapters) {
+  const genericTerms = [
+    "part",
+    "section",
+    "chapter",
+    "segment",
+    "portion",
+    "continued",
+    "misc",
+    "miscellaneous",
+    "other",
+    "etc",
+  ];
+
+  chapters.forEach((chapter) => {
+    // Check for minimum word count
+    const wordCount = chapter.title.split(" ").length;
+    if (wordCount < 2 || wordCount > 6) {
+      throw new Error(
+        `Chapter title "${chapter.title}" should be 2-6 words (currently ${wordCount} words)`
+      );
+    }
+
+    // Check for generic terms
+    const lowerTitle = chapter.title.toLowerCase();
+    const foundGenericTerm = genericTerms.find(
+      (term) =>
+        lowerTitle.includes(term) &&
+        // Allow terms if they're part of a specific phrase
+        !lowerTitle.includes(`${term} design`) &&
+        !lowerTitle.includes(`${term} implementation`) &&
+        !lowerTitle.includes(`${term} analysis`)
+    );
+
+    if (foundGenericTerm) {
+      throw new Error(
+        `Chapter title "${chapter.title}" contains generic term "${foundGenericTerm}". Please use more specific descriptions.`
+      );
+    }
+  });
 }
