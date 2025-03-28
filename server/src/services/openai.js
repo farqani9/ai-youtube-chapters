@@ -14,7 +14,46 @@ if (!OPENAI_API_KEY) {
 
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
+  maxRetries: 3, // Add retries at the client level
+  timeout: 30000, // 30 second timeout
 });
+
+// Error types that are safe to retry
+const RETRYABLE_ERRORS = [
+  "insufficient_quota",
+  "rate_limit_exceeded",
+  "server_error",
+  "service_unavailable",
+  "temporarily_unavailable",
+];
+
+async function retryWithExponentialBackoff(operation, maxRetries = 3) {
+  let lastError;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+
+      // Check if error is retryable
+      const isRetryable = RETRYABLE_ERRORS.some((errorType) =>
+        error.message?.toLowerCase().includes(errorType.toLowerCase())
+      );
+
+      if (!isRetryable) {
+        throw error;
+      }
+
+      // Calculate delay with exponential backoff (1s, 2s, 4s)
+      const delay = Math.pow(2, attempt) * 1000;
+      console.log(`Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+}
 
 export async function generateChapters(videoData) {
   try {
@@ -81,23 +120,41 @@ EXAMPLE OUTPUT (DO NOT USE THESE TITLES, GENERATE BASED ON ACTUAL CONTENT):
 05:45 - API Implementation Steps
 ...`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: userPrompt,
-        },
-      ],
-      temperature: 0.3, // Reduced further for more deterministic output
-      max_tokens: 500,
-      presence_penalty: 0.2, // Adjusted for better context adherence
-      frequency_penalty: 0.4, // Increased to reduce repetitive language
-      top_p: 0.9, // Added to focus on more probable completions
+    // Wrap the OpenAI call in retry logic
+    const completion = await retryWithExponentialBackoff(async () => {
+      try {
+        const result = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt,
+            },
+            {
+              role: "user",
+              content: userPrompt,
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 500,
+          presence_penalty: 0.2,
+          frequency_penalty: 0.4,
+          top_p: 0.9,
+        });
+        return result;
+      } catch (error) {
+        // Enhance error messages
+        if (error.status === 429) {
+          throw new Error(
+            "AI service is currently at capacity. Please try again in a few moments."
+          );
+        } else if (error.status >= 500) {
+          throw new Error(
+            "AI service temporarily unavailable. Please try again later."
+          );
+        }
+        throw error;
+      }
     });
 
     // Parse the response into structured chapter data
@@ -110,9 +167,26 @@ EXAMPLE OUTPUT (DO NOT USE THESE TITLES, GENERATE BASED ON ACTUAL CONTENT):
 
     return chapters;
   } catch (error) {
+    // Enhanced error handling with specific messages
+    let userFriendlyError;
+
+    if (error.message.includes("API key")) {
+      userFriendlyError =
+        "Authentication error. Please check the API configuration.";
+    } else if (
+      error.message.includes("capacity") ||
+      error.message.includes("unavailable")
+    ) {
+      userFriendlyError = error.message; // Use the enhanced message from above
+    } else if (error.message.includes("exceeded")) {
+      userFriendlyError = "Service limit reached. Please try again later.";
+    } else {
+      userFriendlyError =
+        "Unable to generate chapters at the moment. Please try again later.";
+    }
+
     console.error("OpenAI API Error:", error);
-    error.name = "OpenAIError";
-    throw error;
+    throw new Error(userFriendlyError);
   }
 }
 
