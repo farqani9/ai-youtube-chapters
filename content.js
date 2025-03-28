@@ -67,6 +67,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Function to inject chapters into the YouTube page
 window.injectChapters = function (chapters) {
   try {
+    // Remove existing AI-generated chapters if any
+    const existingChapters = document.querySelector(".ai-generated-chapters");
+    if (existingChapters) {
+      existingChapters.remove();
+    }
+
     // Create chapters container
     const chaptersContainer = document.createElement("div");
     chaptersContainer.className = "ai-generated-chapters";
