@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>YouTube Chapter Generator</title>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        width: 300px;
+        padding: 16px;
+        font-family: "Roboto", sans-serif;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .title {
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0;
+        color: #030303;
+      }
+
+      .status {
+        font-size: 14px;
+        color: #606060;
+        margin: 8px 0;
+      }
+
+      .button {
+        background-color: #065fd4;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 18px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .button:hover {
+        background-color: #0356c2;
+      }
+
+      .button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        display: none;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #065fd4;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error {
+        color: #c00;
+        font-size: 14px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="title">YouTube Chapter Generator</h1>
+      <p class="status">Generate AI-powered chapters for this video</p>
+      <button id="generateBtn" class="button">Generate Chapters</button>
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <span>Generating chapters...</span>
+      </div>
+      <div id="error" class="error"></div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
