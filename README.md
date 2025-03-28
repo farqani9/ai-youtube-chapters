@@ -1,87 +1,47 @@
-# AI YouTube Chapters
+# YouTube Chapter Generator Extension
 
 A Chrome extension that automatically generates chapters for YouTube videos using AI technology.
 
 ## Features
 
-- Automatically generates chapters for any YouTube video
-- Uses AI (via OpenAI) to analyze video content
-- Seamlessly injects chapters into the YouTube interface
-- Works with or without existing transcripts
-- Simple one-click interface
+- One-click chapter generation for YouTube videos
+- AI-powered analysis of video content
+- Seamless integration with YouTube's interface
+- Support for videos with or without transcripts
 
-## Installation
+## Development Setup
 
-### Chrome Web Store (Coming Soon)
+1. Clone this repository
+2. Open Chrome and navigate to `chrome://extensions/`
+3. Enable "Developer mode" in the top right
+4. Click "Load unpacked" and select the extension directory
 
-The extension will be available on the Chrome Web Store soon.
+## Project Structure
 
-### Development Installation
-
-1. Clone this repository:
-
-   ```
-   git clone https://github.com/yourusername/ai-yt-chapters.git
-   cd ai-yt-chapters
-   ```
-
-2. Install server dependencies:
-
-   ```
-   cd server
-   npm install
-   ```
-
-3. Configure the server:
-
-   - Create a `.env` file in the server directory
-   - Add your OpenAI API key and other configuration:
-     ```
-     PORT=3000
-     NODE_ENV=development
-     API_KEY=your-api-key
-     OPENAI_API_KEY=your-openai-key
-     ALLOWED_ORIGINS=*
-     ```
-
-4. Load the extension in Chrome:
-   - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode" (toggle in the top right)
-   - Click "Load unpacked" and select the repository folder
-
-## Usage
-
-1. Navigate to any YouTube video
-2. Click the extension icon in your browser toolbar
-3. Click "Generate Chapters"
-4. Wait a few seconds for the AI to analyze the content
-5. Chapters will appear below the video description
-
-## Architecture
-
-- **Chrome Extension**: Frontend interface and YouTube page integration
-- **Node.js Server**: Backend for API key protection and OpenAI integration
+- `manifest.json`: Extension configuration
+- `popup.html/js`: Extension popup interface
+- `background.js`: Service worker for background tasks
+- `content.js`: Content script for YouTube page interaction
+- `icons/`: Extension icons
 
 ## Development
 
-### Server
+1. Make changes to the source files
+2. Reload the extension in Chrome
+3. Test on YouTube videos
 
-Start the development server:
+## Phase 1 Implementation
 
-```
-cd server
-npm run dev
-```
+The current implementation includes:
 
-### Extension
+- Basic extension structure
+- Popup interface with Material Design
+- Video data extraction functionality
+- Message passing between components
+- Error handling and user feedback
 
-The extension doesn't require a build step. After making changes, simply reload it in `chrome://extensions/`.
+Next phases will include:
 
-## License
-
-MIT
-
-## Acknowledgments
-
-- [OpenAI](https://openai.com/) for the GPT API
-- [Chrome Extensions Documentation](https://developer.chrome.com/docs/extensions/)
+- Server-side integration
+- GPT API integration
+- Chapter injection into YouTube interface
